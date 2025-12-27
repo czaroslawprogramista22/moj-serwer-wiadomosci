@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Moja Baza Wiadomości</title>
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; padding: 20px; }
+        .container { background: #2a2a2a; padding: 30px; border-radius: 15px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        input { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
+        button { padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; }
+        #lista-wiadomosci { list-style: none; padding: 0; margin-top: 20px; }
+        .wiadomosc-item { background: #333; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #4CAF50; }
+        .btn-usun { background: #ff4444; font-size: 12px; padding: 5px 10px; }
+        .data-wiadomosci { font-size: 11px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Baza Wiadomości 🚀</h1>
+        
+        <form id="form-wiadomosc">
+            <input type="text" name="wiadomosc" placeholder="Napisz coś..." required>
+            <button type="submit">Dodaj</button>
+        </form>
+
+        <ul id="lista-wiadomosci">
+            </ul>
+
+        <hr style="border: 0; border-top: 1px solid #444; margin: 20px 0;">
+        <a href="/logout" style="color: #888; text-decoration: none; font-size: 13px;">Wyloguj się</a>
+    </div>
+
+    <script>
+        const form = document.getElementById('form-wiadomosc');
+        const lista = document.getElementById('lista-wiadomosci');
+
+        function odswiezListe() {
+            fetch('/api/lista')
+                .then(res => res.json())
+                .then(data => {
+                    lista.innerHTML = "";
+                    if (!Array.isArray(data) || data.length === 0) {
+                        lista.innerHTML = "<p style='color: #666;'>Brak wiadomości w bazie.</p>";
+                        return;
+                    }
+
+                    data.forEach(w => {
+                        const li = document.createElement('li');
+                        li.className = 'wiadomosc-item';
+                        li.innerHTML = `
+                            <div>
+                                <span class="data-wiadomosci">${w.data}</span><br>
+                                <span>${w.tresc}</span>
+                            </div>
+                            <button class="btn-usun" onclick="usunWiadomosc(${w.id})">Usuń</button>
+                        `;
+                        lista.appendChild(li);
+                    });
+                })
+                .catch(err => {
+                    console.error("Błąd pobierania:", err);
+                    lista.innerHTML = "<p style='color: red;'>Błąd połączenia z bazą.</p>";
+                });
+        }
+
+        async function usunWiadomosc(id) {
+            if (!confirm("Usunąć wpis z bazy danych?")) return;
+            await fetch('/api/usun', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${id}`
+            });
+            odswiezListe();
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new URLSearchParams(new FormData(form));
+            const response = await fetch('/api/wiadomosc', { method: 'POST', body: formData });
+            if (response.ok) {
+                form.reset();
+                odswiezListe();
+            }
+        };
+
+        odswiezListe();
+    </script>
+</body>
+</html>

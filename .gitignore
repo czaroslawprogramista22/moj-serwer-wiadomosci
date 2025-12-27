@@ -1,0 +1,14 @@
+# Zależności - te pliki hosting sam sobie pobierze
+node_modules/
+
+# Sekrety - TUTAJ JEST TWOJE HASŁO ADMINA! Nigdy tego nie wysyłaj.
+.env
+
+# Baza danych - na hostingu powstanie nowa, pusta baza
+baza.db
+*.db-journal
+
+# Logi i pliki tymczasowe
+npm-debug.log*
+logs/
+wiadomosci.txt
