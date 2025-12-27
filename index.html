@@ -2,89 +2,108 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Moja Baza Wiadomości</title>
+    <title>Panel Admina - Monitor FP</title>
     <link rel="stylesheet" href="/style.css">
     <style>
-        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; padding: 20px; }
-        .container { background: #2a2a2a; padding: 30px; border-radius: 15px; width: 100%; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        input { padding: 10px; width: 70%; border-radius: 5px; border: 1px solid #444; background: #333; color: white; }
-        button { padding: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 5px; }
-        #lista-wiadomosci { list-style: none; padding: 0; margin-top: 20px; }
-        .wiadomosc-item { background: #333; margin-bottom: 10px; padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #4CAF50; }
-        .btn-usun { background: #ff4444; font-size: 12px; padding: 5px 10px; }
-        .data-wiadomosci { font-size: 11px; color: #888; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 100%; max-width: 900px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); margin-bottom: 20px; }
+        h1, h2 { color: #4CAF50; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        /* Styl tabeli logów */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
+        th { background: #252525; color: #4CAF50; }
+        tr:hover { background: #2a2a2a; }
+        .fp-text { font-family: monospace; font-size: 11px; color: #aaa; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+
+        /* Styl wiadomości */
+        .msg-item { background: #252525; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; border-left: 4px solid #4CAF50; }
+        
+        input, button { padding: 10px; border-radius: 4px; border: 1px solid #333; background: #2c2c2c; color: white; }
+        button { background: #4CAF50; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #45a049; }
+        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>Baza Wiadomości 🚀</h1>
-        
+        <h1>System Wiadomości 🚀</h1>
         <form id="form-wiadomosc">
-            <input type="text" name="wiadomosc" placeholder="Napisz coś..." required>
-            <button type="submit">Dodaj</button>
+            <input type="text" name="wiadomosc" placeholder="Dodaj ogłoszenie..." required style="width: 70%;">
+            <button type="submit">Opublikuj</button>
         </form>
-
-        <ul id="lista-wiadomosci">
-            </ul>
-
-        <hr style="border: 0; border-top: 1px solid #444; margin: 20px 0;">
-        <a href="/logout" style="color: #888; text-decoration: none; font-size: 13px;">Wyloguj się</a>
+        <ul id="lista-wiadomosci" style="list-style: none; padding: 0; margin-top: 20px;"></ul>
     </div>
 
+    <div class="container">
+        <h2>Logi Fingerprintów (Margonem) 🕵️‍♂️</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nick</th>
+                    <th>Acc ID</th>
+                    <th>Fingerprint</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-logow">
+                </tbody>
+        </table>
+    </div>
+
+    <a href="/logout" class="btn-logout">Wyloguj administratora</a>
+
     <script>
-        const form = document.getElementById('form-wiadomosc');
-        const lista = document.getElementById('lista-wiadomosci');
+        const listaWiadomosci = document.getElementById('lista-wiadomosci');
+        const tabelaLogow = document.getElementById('tabela-logow');
 
-        function odswiezListe() {
-            fetch('/api/lista')
-                .then(res => res.json())
-                .then(data => {
-                    lista.innerHTML = "";
-                    if (!Array.isArray(data) || data.length === 0) {
-                        lista.innerHTML = "<p style='color: #666;'>Brak wiadomości w bazie.</p>";
-                        return;
-                    }
-
-                    data.forEach(w => {
-                        const li = document.createElement('li');
-                        li.className = 'wiadomosc-item';
-                        li.innerHTML = `
-                            <div>
-                                <span class="data-wiadomosci">${w.data}</span><br>
-                                <span>${w.tresc}</span>
-                            </div>
-                            <button class="btn-usun" onclick="usunWiadomosc(${w.id})">Usuń</button>
-                        `;
-                        lista.appendChild(li);
-                    });
-                })
-                .catch(err => {
-                    console.error("Błąd pobierania:", err);
-                    lista.innerHTML = "<p style='color: red;'>Błąd połączenia z bazą.</p>";
+        // Pobieranie wiadomości z bazy
+        function odswiezWiadomosci() {
+            fetch('/api/lista').then(res => res.json()).then(data => {
+                listaWiadomosci.innerHTML = "";
+                data.forEach(w => {
+                    const li = document.createElement('li');
+                    li.className = 'msg-item';
+                    li.innerHTML = `<span>${w.tresc}</span> <button onclick="usunWiadomosc(${w.id})" style="background:#ff4444; scale: 0.8;">X</button>`;
+                    listaWiadomosci.appendChild(li);
                 });
+            });
+        }
+
+        // Pobieranie logów FP z nowej tabeli
+        function odswiezLogi() {
+            fetch('/api/logs').then(res => res.json()).then(data => {
+                tabelaLogow.innerHTML = "";
+                data.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="color: #888;">${log.data}</td>
+                        <td style="font-weight: bold;">${log.nick}</td>
+                        <td>${log.account_id}</td>
+                        <td class="fp-text" title="${log.fp}">${log.fp}</td>
+                    `;
+                    tabelaLogow.appendChild(tr);
+                });
+            });
         }
 
         async function usunWiadomosc(id) {
-            if (!confirm("Usunąć wpis z bazy danych?")) return;
-            await fetch('/api/usun', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id=${id}`
-            });
-            odswiezListe();
+            await fetch('/api/usun', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: `id=${id}` });
+            odswiezWiadomosci();
         }
 
-        form.onsubmit = async (e) => {
+        document.getElementById('form-wiadomosc').onsubmit = async (e) => {
             e.preventDefault();
-            const formData = new URLSearchParams(new FormData(form));
-            const response = await fetch('/api/wiadomosc', { method: 'POST', body: formData });
-            if (response.ok) {
-                form.reset();
-                odswiezListe();
-            }
+            await fetch('/api/wiadomosc', { method: 'POST', body: new URLSearchParams(new FormData(e.target)) });
+            e.target.reset();
+            odswiezWiadomosci();
         };
 
-        odswiezListe();
+        // Startowe pobieranie i interwał
+        odswiezWiadomosci();
+        odswiezLogi();
+        setInterval(odswiezLogi, 5000); // Odświeżaj logi co 5 sekund
     </script>
 </body>
 </html>
