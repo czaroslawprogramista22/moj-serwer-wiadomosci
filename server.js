@@ -85,12 +85,20 @@ app.get('/api/lista', sprawdzLogowanie, (req, res) => {
 
 // Pobieranie logów fingerprintów dla administratora
 app.get('/api/logs', sprawdzLogowanie, (req, res) => {
-    db.all("SELECT * FROM fp_logs ORDER BY id DESC LIMIT 50", [], (err, rows) => {
+    // Zapytanie, które przy okazji pobierania logu sprawdza, 
+    // czy ten sam FP ma przypisane inne account_id
+    const sql = `
+        SELECT *, 
+        (SELECT COUNT(DISTINCT account_id) FROM fp_logs f2 WHERE f2.fp = fp_logs.fp) as uzytkownikow 
+        FROM fp_logs 
+        ORDER BY id DESC LIMIT 50
+    `;
+
+    db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json(err);
         res.json(rows);
     });
 });
-
 // --- API DLA SKRYPTU TAMPERMONKEY (PUBLICZNE) ---
 
 // 1. Sprawdzanie czy FP jest legalny

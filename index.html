@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Admina - Monitor FP</title>
+    <title>Panel Admina - Monitor FP (Alerty)</title>
     <link rel="stylesheet" href="/style.css">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
@@ -14,6 +14,25 @@
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
         th { background: #252525; color: #4CAF50; }
         tr:hover { background: #2a2a2a; }
+        
+        /* --- NOWOŚĆ: STYLE ALERTÓW --- */
+        .alert-row {
+            background: rgba(255, 68, 68, 0.15) !important;
+            border-left: 4px solid #ff4444;
+        }
+        .alert-badge {
+            background: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 10px;
+            vertical-align: middle;
+            letter-spacing: 0.5px;
+        }
+        /* ------------------------------ */
+
         .fp-text { font-family: monospace; font-size: 11px; color: #aaa; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
         /* Styl wiadomości */
@@ -22,7 +41,7 @@
         input, button { padding: 10px; border-radius: 4px; border: 1px solid #333; background: #2c2c2c; color: white; }
         button { background: #4CAF50; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:hover { background: #45a049; }
-        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; }
+        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; text-decoration: none; padding: 8px 15px; border-radius: 5px; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -51,59 +70,3 @@
                 </tbody>
         </table>
     </div>
-
-    <a href="/logout" class="btn-logout">Wyloguj administratora</a>
-
-    <script>
-        const listaWiadomosci = document.getElementById('lista-wiadomosci');
-        const tabelaLogow = document.getElementById('tabela-logow');
-
-        // Pobieranie wiadomości z bazy
-        function odswiezWiadomosci() {
-            fetch('/api/lista').then(res => res.json()).then(data => {
-                listaWiadomosci.innerHTML = "";
-                data.forEach(w => {
-                    const li = document.createElement('li');
-                    li.className = 'msg-item';
-                    li.innerHTML = `<span>${w.tresc}</span> <button onclick="usunWiadomosc(${w.id})" style="background:#ff4444; scale: 0.8;">X</button>`;
-                    listaWiadomosci.appendChild(li);
-                });
-            });
-        }
-
-        // Pobieranie logów FP z nowej tabeli
-        function odswiezLogi() {
-            fetch('/api/logs').then(res => res.json()).then(data => {
-                tabelaLogow.innerHTML = "";
-                data.forEach(log => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="color: #888;">${log.data}</td>
-                        <td style="font-weight: bold;">${log.nick}</td>
-                        <td>${log.account_id}</td>
-                        <td class="fp-text" title="${log.fp}">${log.fp}</td>
-                    `;
-                    tabelaLogow.appendChild(tr);
-                });
-            });
-        }
-
-        async function usunWiadomosc(id) {
-            await fetch('/api/usun', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: `id=${id}` });
-            odswiezWiadomosci();
-        }
-
-        document.getElementById('form-wiadomosc').onsubmit = async (e) => {
-            e.preventDefault();
-            await fetch('/api/wiadomosc', { method: 'POST', body: new URLSearchParams(new FormData(e.target)) });
-            e.target.reset();
-            odswiezWiadomosci();
-        };
-
-        // Startowe pobieranie i interwał
-        odswiezWiadomosci();
-        odswiezLogi();
-        setInterval(odswiezLogi, 5000); // Odświeżaj logi co 5 sekund
-    </script>
-</body>
-</html>
