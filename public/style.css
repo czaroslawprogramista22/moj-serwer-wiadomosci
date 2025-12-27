@@ -1,156 +1,40 @@
-/* Główne ustawienia tła i czcionek */
 body {
-    background-color: #0f111a; /* Bardzo głęboki granat/czerń */
+    background-color: #0f111a;
     color: #e0e6ed;
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: sans-serif;
     margin: 0;
-    padding: 40px 20px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    min-height: 100vh;
 }
 
-/* Kontener na sekcje (karty) */
 .container {
     background: #1a1d29;
     width: 100%;
-    max-width: 1000px;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    margin-bottom: 30px;
+    max-width: 800px;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
     border: 1px solid #2d3245;
 }
 
-/* Nagłówki */
-h1, h2 {
-    color: #4CAF50; /* Neonowa zieleń dla akcentu */
-    margin-top: 0;
-    border-bottom: 1px solid #2d3245;
-    padding-bottom: 10px;
-    font-weight: 300;
-    letter-spacing: 1px;
-}
+h1, h2 { color: #4CAF50; border-bottom: 1px solid #2d3245; padding-bottom: 10px; }
 
-/* Formularz dodawania wiadomości */
-#form-wiadomosc {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
+#form-wiadomosc { display: flex; gap: 10px; margin-bottom: 20px; }
 
-input[type="text"], input[type="password"] {
-    flex-grow: 1;
-    background: #0f111a;
-    border: 1px solid #3b4252;
-    padding: 12px;
-    color: white;
-    border-radius: 6px;
-    outline: none;
-    transition: border 0.3s;
-}
+input { flex-grow: 1; background: #0f111a; border: 1px solid #3b4252; padding: 10px; color: white; border-radius: 5px; }
 
-input:focus {
-    border-color: #4CAF50;
-}
+button { background: #4CAF50; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; }
 
-button {
-    background: #4CAF50;
-    color: #0f111a;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: transform 0.2s, background 0.3s;
-}
+table { width: 100%; border-collapse: collapse; }
 
-button:hover {
-    background: #66bb6a;
-    transform: translateY(-2px);
-}
+th { text-align: left; padding: 10px; background: #242936; color: #8892b0; }
 
-/* Tabela logów */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
+td { padding: 10px; border-bottom: 1px solid #242936; }
 
-th {
-    text-align: left;
-    padding: 12px;
-    background: #242936;
-    color: #8892b0;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
+.fp-text { font-family: monospace; font-size: 10px; color: #61dafb; }
 
-td {
-    padding: 12px;
-    border-bottom: 1px solid #242936;
-    font-size: 0.9rem;
-}
+.msg-item { background: #242936; padding: 10px; border-radius: 5px; margin-bottom: 5px; display: flex; justify-content: space-between; }
 
-tr:hover {
-    background: #212633;
-}
-
-/* --- SYSTEM ALERTÓW (MULTIKONTO) --- */
-.alert-row {
-    background: rgba(255, 68, 68, 0.1) !important;
-    color: #ff8a80;
-}
-
-.alert-row td {
-    border-bottom: 1px solid rgba(255, 68, 68, 0.3);
-}
-
-.alert-badge {
-    background: #ff4444;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    margin-left: 8px;
-    box-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
-}
-
-/* Fingerprint (skrócony tekst) */
-.fp-text {
-    font-family: 'Courier New', monospace;
-    color: #61dafb;
-    font-size: 11px;
-    opacity: 0.7;
-}
-
-/* Lista wiadomości */
-.msg-item {
-    background: #242936;
-    margin-bottom: 8px;
-    padding: 12px;
-    border-radius: 6px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-/* Przycisk wylogowania */
-.btn-logout {
-    margin-top: 20px;
-    color: #8892b0;
-    text-decoration: none;
-    font-size: 0.8rem;
-    border: 1px solid #3b4252;
-    padding: 8px 16px;
-    border-radius: 4px;
-    transition: all 0.3s;
-}
-
-.btn-logout:hover {
-    color: #ff4444;
-    border-color: #ff4444;
-    background: rgba(255, 68, 68, 0.05);
-}
+.btn-logout { color: #ff4444; text-decoration: none; margin-top: 20px; border: 1px solid #ff4444; padding: 5px 10px; border-radius: 5px; }

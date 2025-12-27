@@ -2,71 +2,83 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Panel Admina - Monitor FP (Alerty)</title>
+    <title>Panel Monitoringu FP</title>
     <link rel="stylesheet" href="/style.css">
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: #1e1e1e; padding: 25px; border-radius: 12px; width: 100%; max-width: 900px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); margin-bottom: 20px; }
-        h1, h2 { color: #4CAF50; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        
-        /* Styl tabeli logów */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
-        th { background: #252525; color: #4CAF50; }
-        tr:hover { background: #2a2a2a; }
-        
-        /* --- NOWOŚĆ: STYLE ALERTÓW --- */
-        .alert-row {
-            background: rgba(255, 68, 68, 0.15) !important;
-            border-left: 4px solid #ff4444;
-        }
-        .alert-badge {
-            background: #ff4444;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 10px;
-            vertical-align: middle;
-            letter-spacing: 0.5px;
-        }
-        /* ------------------------------ */
-
-        .fp-text { font-family: monospace; font-size: 11px; color: #aaa; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
-
-        /* Styl wiadomości */
-        .msg-item { background: #252525; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; border-left: 4px solid #4CAF50; }
-        
-        input, button { padding: 10px; border-radius: 4px; border: 1px solid #333; background: #2c2c2c; color: white; }
-        button { background: #4CAF50; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #45a049; }
-        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; text-decoration: none; padding: 8px 15px; border-radius: 5px; font-size: 0.9em; }
-    </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>System Wiadomości 🚀</h1>
+        <h1>Wiadomości 🚀</h1>
         <form id="form-wiadomosc">
-            <input type="text" name="wiadomosc" placeholder="Dodaj ogłoszenie..." required style="width: 70%;">
-            <button type="submit">Opublikuj</button>
+            <input type="text" name="wiadomosc" placeholder="Treść..." required style="width: 70%;">
+            <button type="submit">Dodaj</button>
         </form>
-        <ul id="lista-wiadomosci" style="list-style: none; padding: 0; margin-top: 20px;"></ul>
+        <ul id="lista-wiadomosci" style="list-style: none; padding: 0;"></ul>
     </div>
 
     <div class="container">
-        <h2>Logi Fingerprintów (Margonem) 🕵️‍♂️</h2>
+        <h2>Ostatnie Logi Fingerprintów 🕵️‍♂️</h2>
         <table>
             <thead>
                 <tr>
                     <th>Data</th>
                     <th>Nick</th>
-                    <th>Acc ID</th>
+                    <th>ID Konta</th>
                     <th>Fingerprint</th>
                 </tr>
             </thead>
-            <tbody id="tabela-logow">
-                </tbody>
+            <tbody id="tabela-logow"></tbody>
         </table>
     </div>
+
+    <a href="/logout" class="btn-logout">Wyloguj administratora</a>
+
+    <script>
+        const listaWiadomosci = document.getElementById('lista-wiadomosci');
+        const tabelaLogow = document.getElementById('tabela-logow');
+
+        function odswiezWiadomosci() {
+            fetch('/api/lista').then(res => res.json()).then(data => {
+                listaWiadomosci.innerHTML = "";
+                data.forEach(w => {
+                    const li = document.createElement('li');
+                    li.className = 'msg-item';
+                    li.innerHTML = `<span>${w.tresc}</span> <button onclick="usunWiadomosc(${w.id})" style="background:#ff4444;">X</button>`;
+                    listaWiadomosci.appendChild(li);
+                });
+            });
+        }
+
+        function odswiezLogi() {
+            fetch('/api/logs').then(res => res.json()).then(data => {
+                tabelaLogow.innerHTML = "";
+                data.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${log.data}</td>
+                        <td><b>${log.nick}</b></td>
+                        <td>${log.account_id}</td>
+                        <td class="fp-text">${log.fp}</td>
+                    `;
+                    tabelaLogow.appendChild(tr);
+                });
+            });
+        }
+
+        async function usunWiadomosc(id) {
+            await fetch('/api/usun', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: `id=${id}` });
+            odswiezWiadomosci();
+        }
+
+        document.getElementById('form-wiadomosc').onsubmit = async (e) => {
+            e.preventDefault();
+            await fetch('/api/wiadomosc', { method: 'POST', body: new URLSearchParams(new FormData(e.target)) });
+            e.target.reset();
+            odswiezWiadomosci();
+        };
+
+        odswiezWiadomosci();
+        odswiezLogi();
+        setInterval(odswiezLogi, 5000);
+    </script>
+</body>
+</html>
