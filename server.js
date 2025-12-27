@@ -11,7 +11,10 @@ const port = process.env.PORT || 9999;
 const HASLO = process.env.ADMIN_PASSWORD;
 
 // --- KONFIGURACJA BAZY DANYCH ---
-const db = new sqlite3.Database('./baza.db');
+const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH ? 
+               path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, 'baza.db') : 
+               './baza.db';
+const db = new sqlite3.Database(dbPath);
 
 // Tworzenie tabel: Wiadomości oraz Logi Fingerprintów
 db.serialize(() => {
