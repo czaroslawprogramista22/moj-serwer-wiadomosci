@@ -4,7 +4,7 @@ const path = require('path');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const sqlite3 = require('sqlite3').verbose();
-const cors = require('cors'); // DODANO: Obsługa zapytań z innych stron
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 9999;
@@ -16,14 +16,16 @@ const dbPath = process.env.RAILWAY_VOLUME_MOUNT_PATH ?
                './baza.db';
 const db = new sqlite3.Database(dbPath);
 
-// Tworzenie tabel: Wiadomości oraz Logi Fingerprintów
+// Tworzenie tabel oraz INDEKSÓW dla wydajności
 db.serialize(() => {
+    // Tabela wiadomości
     db.run(`CREATE TABLE IF NOT EXISTS wiadomosci (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data TEXT,
         tresc TEXT
     )`);
 
+    // Tabela logów fingerprintów
     db.run(`CREATE TABLE IF NOT EXISTS fp_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fp TEXT,
@@ -32,10 +34,14 @@ db.serialize(() => {
         account_id INTEGER,
         data TEXT
     )`);
+
+    // --- NOWOŚĆ: INDEKS DLA WYDAJNOŚCI ---
+    // Przyspiesza wyszukiwanie duplikatów przy dużej ilości danych
+    db.run(`CREATE INDEX IF NOT EXISTS idx_fp ON fp_logs (fp)`);
 });
 
 // --- MIDDLEWARE ---
-app.use(cors()); // Pozwala skryptowi z margonem.pl łączyć się z Twoim serwerem
+app.use(cors()); 
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json());
@@ -73,12 +79,10 @@ app.get('/logout', (req, res) => {
 });
 
 // --- PANEL WWW (DASHBOARD) ---
-
 app.get('/', sprawdzLogowanie, (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Pobieranie wiadomości
 app.get('/api/lista', sprawdzLogowanie, (req, res) => {
     db.all("SELECT * FROM wiadomosci ORDER BY id DESC", [], (err, rows) => {
         if (err) return res.status(500).json(err);
@@ -86,7 +90,6 @@ app.get('/api/lista', sprawdzLogowanie, (req, res) => {
     });
 });
 
-// Pobieranie logów fingerprintów dla administratora
 app.get('/api/logs', sprawdzLogowanie, (req, res) => {
     db.all("SELECT * FROM fp_logs ORDER BY id DESC LIMIT 50", [], (err, rows) => {
         if (err) return res.status(500).json(err);
@@ -94,32 +97,26 @@ app.get('/api/logs', sprawdzLogowanie, (req, res) => {
     });
 });
 
-
-// --- API DLA SKRYPTU TAMPERMONKEY (PUBLICZNE) ---
-
-// 1. Sprawdzanie czy FP jest legalny
+// --- API DLA SKRYPTU TAMPERMONKEY ---
 app.post('/check', (req, res) => {
     const { fp, account } = req.body;
 
-    // Szukamy czy ten FP był używany przez kogoś innego
+    // Dzięki indeksowi to zapytanie będzie błyskawiczne nawet przy milionie rekordów
     db.get("SELECT * FROM fp_logs WHERE fp = ? AND account_id != ? LIMIT 1", [fp, account], (err, row) => {
         if (err) return res.status(500).json({ code: 500, message: "Błąd bazy" });
 
         if (row) {
-            // Znaleziono powiązanie z innym kontem!
             res.json({ 
                 fpIsLegal: false, 
                 fpUsedByAccount: row.account_id, 
                 fpUsedByNick: row.nick 
             });
         } else {
-            // Wszystko w porządku
             res.json({ fpIsLegal: true, newlyRegistered: true, knownNick: true });
         }
     });
 });
 
-// 2. Logowanie wejścia (Fingerprint + Nick)
 app.post('/log', (req, res) => {
     const { fp, nick, char, account } = req.body;
     const data = new Date().toLocaleString();
@@ -132,7 +129,6 @@ app.post('/log', (req, res) => {
 });
 
 // --- ZARZĄDZANIE WIADOMOŚCIAMI ---
-
 app.post('/api/wiadomosc', sprawdzLogowanie, (req, res) => {
     const tekst = req.body.wiadomosc.replace(/</g, "&lt;");
     const data = new Date().toLocaleString();
