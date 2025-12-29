@@ -14,6 +14,11 @@
         th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
         th { background: #252525; color: #4CAF50; }
         tr:hover { background: #2a2a2a; }
+        
+        /* ALERTY MULTIKONT */
+        .alert-row { background: rgba(255, 68, 68, 0.15) !important; border-left: 4px solid #ff4444; }
+        .alert-badge { background: #ff4444; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+
         .fp-text { font-family: monospace; font-size: 11px; color: #aaa; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 
         /* Styl wiadomości */
@@ -22,7 +27,7 @@
         input, button { padding: 10px; border-radius: 4px; border: 1px solid #333; background: #2c2c2c; color: white; }
         button { background: #4CAF50; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:hover { background: #45a049; }
-        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; }
+        .btn-logout { background: transparent; color: #ff4444; border: 1px solid #ff4444; margin-top: 20px; text-decoration: none; padding: 10px; border-radius: 4px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -38,6 +43,12 @@
 
     <div class="container">
         <h2>Logi Fingerprintów (Margonem) 🕵️‍♂️</h2>
+        
+        <div style="margin-bottom: 15px; width: 100%; display: flex; gap: 10px;">
+            <input type="text" id="search-input" placeholder="Szukaj po nicku, ID konta lub FP..." 
+                   style="flex-grow: 1; padding: 10px; background: #2c2c2c; color: white; border: 1px solid #4CAF50; border-radius: 4px;">
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -47,8 +58,7 @@
                     <th>Fingerprint</th>
                 </tr>
             </thead>
-            <tbody id="tabela-logow">
-                </tbody>
+            <tbody id="tabela-logow"></tbody>
         </table>
     </div>
 
@@ -57,8 +67,11 @@
     <script>
         const listaWiadomosci = document.getElementById('lista-wiadomosci');
         const tabelaLogow = document.getElementById('tabela-logow');
+        const searchInput = document.getElementById('search-input');
+        
+        let localLogs = []; 
 
-        // Pobieranie wiadomości z bazy
+        // 1. Obsługa Wiadomości
         function odswiezWiadomosci() {
             fetch('/api/lista').then(res => res.json()).then(data => {
                 listaWiadomosci.innerHTML = "";
@@ -71,22 +84,50 @@
             });
         }
 
-        // Pobieranie logów FP z nowej tabeli
-        function odswiezLogi() {
-            fetch('/api/logs').then(res => res.json()).then(data => {
-                tabelaLogow.innerHTML = "";
-                data.forEach(log => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="color: #888;">${log.data}</td>
-                        <td style="font-weight: bold;">${log.nick}</td>
-                        <td>${log.account_id}</td>
-                        <td class="fp-text" title="${log.fp}">${log.fp}</td>
-                    `;
-                    tabelaLogow.appendChild(tr);
-                });
+        // 2. Renderowanie Tabeli z Alertami
+        function renderTable(data) {
+            tabelaLogow.innerHTML = "";
+            data.forEach(log => {
+                const tr = document.createElement('tr');
+                
+                // Alert jeśli to samo urządzenie ma więcej niż jedno konto
+                if (log.uzytkownikow > 1) {
+                    tr.className = 'alert-row';
+                }
+
+                tr.innerHTML = `
+                    <td style="color: #888;">${new Date(log.data).toLocaleString()}</td> 
+                    <td style="font-weight: bold;">
+                        ${log.nick}
+                        ${log.uzytkownikow > 1 ? `<span class="alert-badge">MULTIKONTO</span>` : ''}
+                    </td>
+                    <td>${log.account_id}</td>
+                    <td class="fp-text" title="${log.fp}">${log.fp}</td>
+                `;
+                tabelaLogow.appendChild(tr);
             });
         }
+
+        // 3. Pobieranie Logów
+        function odswiezLogi() {
+            fetch('/api/logs').then(res => res.json()).then(data => {
+                localLogs = data;
+                filterAndRender();
+            });
+        }
+
+        // 4. Logika Wyszukiwarki
+        function filterAndRender() {
+            const query = searchInput.value.toLowerCase();
+            const filtered = localLogs.filter(log => 
+                log.nick.toLowerCase().includes(query) || 
+                log.account_id.toString().includes(query) || 
+                log.fp.toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+        }
+
+        searchInput.addEventListener('input', filterAndRender);
 
         async function usunWiadomosc(id) {
             await fetch('/api/usun', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: `id=${id}` });
@@ -100,10 +141,9 @@
             odswiezWiadomosci();
         };
 
-        // Startowe pobieranie i interwał
         odswiezWiadomosci();
         odswiezLogi();
-        setInterval(odswiezLogi, 5000); // Odświeżaj logi co 5 sekund
+        setInterval(odswiezLogi, 5000); 
     </script>
 </body>
 </html>

@@ -148,3 +148,12 @@ app.post('/api/usun', sprawdzLogowanie, (req, res) => {
 });
 
 app.listen(port, () => console.log(`Serwer działa na porcie ${port}`));
+
+const axios = require('axios'); // Musisz wpisać: npm install axios
+
+setInterval(() => {
+    // Podmień na swój adres z Rendera!
+    axios.get('https://moj-serwer-wiadomosci.onrender.com/')
+        .then(() => console.log('Ping: Serwer utrzymany przy życiu'))
+        .catch(err => console.log('Ping nieudany, ale to nic.'));
+}, 1000 * 60 * 14); // Co 14 minut
