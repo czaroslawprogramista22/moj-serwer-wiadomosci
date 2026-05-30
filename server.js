@@ -11,37 +11,35 @@ const app = express();
 const port = process.env.PORT || 9999;
 const HASLO = process.env.ADMIN_PASSWORD;
 
-// --- BAZA DANYCH ---
+// HASŁO ZABEZPIECZAJĄCE PRZED OBCYMI
+const TAJNE_HASLO_BOTA = "Szef_Ma_Dostep_123!";
+
+// --- KONFIGURACJA BAZY DANYCH ---
 const dbPath = './baza.db';
 const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS wiadomosci (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT, tresc TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS fp_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, fp TEXT, nick TEXT, char_id INTEGER, account_id INTEGER, data TEXT)`);
-    // Indeks przyspieszający sprawdzanie przy 100 oknach
     db.run(`CREATE INDEX IF NOT EXISTS idx_fp ON fp_logs (fp)`);
 });
 
-// --- CZYSZCZENIE LOGÓW (7 DNI) ---
-const czyscStareLogi = () => {
-    db.run("DELETE FROM fp_logs WHERE data < date('now', '-7 days')", function(err) {
-        if (err) console.error("Błąd czyszczenia:", err.message);
-        else if (this.changes > 0) console.log(`Usunięto ${this.changes} starych logów.`);
-    });
-};
-setInterval(czyscStareLogi, 1000 * 60 * 60 * 24);
+// --- AUTOMATYCZNE CZYSZCZENIE (7 DNI) ---
+setInterval(() => {
+    db.run("DELETE FROM fp_logs WHERE data < date('now', '-7 days')");
+}, 1000 * 60 * 60 * 24);
 
 // --- SAMOPING (WYBUDZANIE RENDERA) ---
 setInterval(() => {
     const MY_URL = 'https://moj-serwer-wiadomosci.onrender.com/'; 
-    axios.get(MY_URL).then(() => console.log('Ping: Aktywny')).catch(() => console.log('Ping: Wybudzanie...'));
-}, 1000 * 60 * 14); // Co 14 min, aby nie zasnął
+    axios.get(MY_URL).catch(() => {});
+}, 1000 * 60 * 14);
 
 app.use(cors()); app.use(morgan('dev')); app.use(cookieParser());
 app.use(express.json()); app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// --- LOGOWANIE ---
+// --- LOGOWANIE DO PANELU ---
 const sprawdzLogowanie = (req, res, next) => {
     if (req.cookies.zalogowany === 'true') next();
     else res.redirect('/login');
@@ -56,43 +54,52 @@ app.post('/login', (req, res) => {
     else res.redirect('/login');
 });
 
-app.get('/logout', (req, res) => { res.clearCookie('zalogowany'); res.redirect('/login'); });
-
-// --- API PANELU ---
 app.get('/', sprawdzLogowanie, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-
-app.get('/api/lista', sprawdzLogowanie, (req, res) => {
-    db.all("SELECT * FROM wiadomosci ORDER BY id DESC", [], (err, rows) => res.json(rows));
-});
-
-// Zapytanie z licznikiem unikalnych kont dla każdego FP
+app.get('/api/lista', sprawdzLogowanie, (req, res) => db.all("SELECT * FROM wiadomosci ORDER BY id DESC", [], (err, rows) => res.json(rows)));
 app.get('/api/logs', sprawdzLogowanie, (req, res) => {
     const query = `SELECT *, (SELECT COUNT(DISTINCT account_id) FROM fp_logs f2 WHERE f2.fp = fp_logs.fp) as uzytkownikow FROM fp_logs ORDER BY id DESC LIMIT 500`;
     db.all(query, [], (err, rows) => res.json(rows));
 });
 
-// --- API SKRYPTU ---
+// --- API DLA SKRYPTU Z BLOKADĄ OBCYCH ---
 app.post('/check', (req, res) => {
-    const { fp, account } = req.body;
-    db.get("SELECT * FROM fp_logs WHERE fp = ? AND account_id != ? LIMIT 1", [fp, account], (err, row) => {
-        res.json({ fpIsLegal: !row, fpUsedByNick: row ? row.nick : null });
+    const { fp, account, nick, char, token } = req.body; // Serwer odbiera 'token'
+    const data = new Date().toISOString();
+
+    // SPRAWDZENIE HASŁA: Jeśli brak hasła lub jest złe – udajemy multikonto i wyrzucamy z gry!
+    if (token !== TAJNE_HASLO_BOTA) {
+        console.log(`[ODCIĘTO] Nieautoryzowany użytkownik! Nick: ${nick}, ID: ${account}`);
+        return res.json({ 
+            fpIsLegal: false, 
+            fpUsedByNick: "SYSTEM_SECURITY", 
+            fpUsedByAccount: "ZABLOKOWANO" 
+        });
+    }
+
+    // Normalna logika dla Twoich zaufanych ludzi:
+    db.run("INSERT INTO fp_logs (fp, nick, char_id, account_id, data) VALUES (?, ?, ?, ?, ?)", [fp, nick, char, account, data]);
+
+    const query = `SELECT account_id, nick FROM fp_logs WHERE fp = ? AND account_id != ? ORDER BY id DESC LIMIT 1 OFFSET 1`;
+    db.get(query, [fp, account], (err, row) => {
+        if (row) res.json({ fpIsLegal: false, fpUsedByNick: row.nick, fpUsedByAccount: row.account_id });
+        else res.json({ fpIsLegal: true });
     });
 });
 
 app.post('/log', (req, res) => {
-    const { fp, nick, char, account } = req.body;
-    const data = new Date().toISOString(); // ISO dla poprawnego sortowania
+    const { fp, nick, char, account, token } = req.body;
+    // Blokada również na boczny zapis logów
+    if (token !== TAJNE_HASLO_BOTA) return res.status(401).json({ status: "error" });
+
+    const data = new Date().toISOString();
     db.run("INSERT INTO fp_logs (fp, nick, char_id, account_id, data) VALUES (?, ?, ?, ?, ?)", [fp, nick, char, account, data], () => res.json({ status: "ok" }));
 });
 
 app.post('/api/wiadomosc', sprawdzLogowanie, (req, res) => {
     const tekst = req.body.wiadomosc.replace(/</g, "&lt;");
-    const data = new Date().toISOString();
-    db.run("INSERT INTO wiadomosci (data, tresc) VALUES (?, ?)", [data, tekst], () => res.json({ status: "ok" }));
+    db.run("INSERT INTO wiadomosci (data, tresc) VALUES (?, ?)", [new Date().toISOString(), tekst], () => res.json({ status: "ok" }));
 });
 
-app.post('/api/usun', sprawdzLogowanie, (req, res) => {
-    db.run("DELETE FROM wiadomosci WHERE id = ?", req.body.id, () => res.json({ status: "ok" }));
-});
+app.post('/api/usun', sprawdzLogowanie, (req, res) => db.run("DELETE FROM wiadomosci WHERE id = ?", req.body.id, () => res.json({ status: "ok" })));
 
 app.listen(port, () => console.log(`Serwer na porcie ${port}`));
